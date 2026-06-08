@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一键养老求助模拟器</title>
+  <style>
+    /* ========== 全局样式 ========== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --elder-bg: #fff8f0;
+      --elder-accent: #e67e22;
+      --child-bg: #f0f4f8;
+      --child-accent: #07c160;
+      --wechat-bg: #ededed;
+      --text-dark: #1a1a1a;
+      --text-muted: #666;
+      --border: #ddd;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: #e8ecf0;
+      color: var(--text-dark);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ========== 页面头部 ========== */
+    .page-header {
+      background: linear-gradient(135deg, #2c3e50, #3498db);
+      color: #fff;
+      text-align: center;
+      padding: 1.5rem 1rem;
+    }
+
+    .page-header h1 {
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+    }
+
+    .page-header p {
+      font-size: clamp(0.85rem, 2.5vw, 1rem);
+      opacity: 0.9;
+      margin-top: 0.4rem;
+    }
+
+    /* ========== 主布局：老人区 + 子女区 ========== */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      max-width: 1100px;
+      margin: 1.5rem auto;
+      padding: 0 1rem 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section-card {
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 0.6rem 1.2rem;
+      text-align: center;
+    }
+
+    /* ========== 老人操作区 ========== */
+    .elder-section {
+      background: var(--elder-bg);
+    }
+
+    .elder-section .section-label {
+      background: var(--elder-accent);
+      color: #fff;
+    }
+
+    .elder-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1.5rem;
+      min-height: 380px;
+    }
+
+    /* 求助状态提示 */
+    .elder-status {
+      font-size: clamp(1rem, 3vw, 1.2rem);
+      color: var(--elder-accent);
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      min-height: 1.8rem;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .elder-status.visible {
+      opacity: 1;
+    }
+
+    .elder-status .request-id {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: 0.3rem;
+    }
+
+    /* 大圆形求助按钮 */
+    .help-btn {
+      width: clamp(160px, 40vw, 200px);
+      height: clamp(160px, 40vw, 200px);
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #f39c12, var(--elder-accent));
+      color: #fff;
+      font-size: clamp(1.1rem, 3.5vw, 1.35rem);
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(230, 126, 34, 0.45);
+      transition: transform 0.2s, box-shadow 0.2s;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .help-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 32px rgba(230, 126, 34, 0.55);
+    }
+
+    .help-btn:active {
+      transform: scale(0.97);
+    }
+
+    .help-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .elder-hint {
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ========== 子女操作区（模拟微信） ========== */
+    .child-section {
+      background: var(--child-bg);
+    }
+
+    .child-section .section-label {
+      background: var(--child-accent);
+      color: #fff;
+    }
+
+    .wechat-mock {
+      background: var(--wechat-bg);
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 微信顶栏 */
+    .wechat-header {
+      background: #393a3e;
+      color: #fff;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .wechat-header .back-icon {
+      font-size: 1.2rem;
+      opacity: 0.7;
+    }
+
+    /* 消息列表 */
+    .wechat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .wechat-empty {
+      text-align: center;
+      color: #aaa;
+      padding: 3rem 1rem;
+      font-size: 0.95rem;
+    }
+
+    /* 微信消息卡片 */
+    .msg-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+      cursor: pointer;
+      padding: 0.6rem;
+      border-radius: 8px;
+      transition: background 0.2s;
+      touch-action: manipulation;
+      animation: slideIn 0.4s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-card:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .msg-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #ff9a56, #ff6b35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .msg-bubble {
+      background: #fff;
+      border-radius: 4px 12px 12px 12px;
+      padding: 0.75rem 1rem;
+      max-width: 75%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      position: relative;
+    }
+
+    .msg-bubble::before {
+      content: "";
+      position: absolute;
+      left: -6px;
+      top: 10px;
+      border: 6px solid transparent;
+      border-right-color: #fff;
+    }
+
+    .msg-sender {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .msg-text {
+      font-size: 0.95rem;
+      color: var(--text-dark);
+    }
+
+    .msg-time {
+      font-size: 0.7rem;
+      color: #bbb;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .msg-badge {
+      display: inline-block;
+      background: #fa5151;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 8px;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+    }
+
+    /* ========== 模态框 ========== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #fff;
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+      animation: modalPop 0.3s ease;
+    }
+
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-header {
+      background: var(--child-accent);
+      color: #fff;
+      padding: 1rem 1.2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 0.2rem;
+    }
+
+    .modal-body {
+      padding: 1.5rem 1.2rem;
+    }
+
+    /* 表单样式 */
+    .form-group {
+      margin-bottom: 1.1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: var(--text-dark);
+    }
+
+    .form-group label .optional {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--child-accent);
+    }
+
+    .form-error {
+      color: #e74c3c;
+      font-size: 0.8rem;
+      margin-top: 0.3rem;
+      display: none;
+    }
+
+    .form-error.show {
+      display: block;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--child-accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      touch-action: manipulation;
+      transition: background 0.2s;
+    }
+
+    .submit-btn:hover {
+      background: #06ad56;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* 查询中状态 */
+    .query-loading {
+      display: none;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .query-loading.active {
+      display: block;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e0e0e0;
+      border-top-color: var(--child-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .query-loading p {
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
+    /* 查询结果 */
+    .query-result {
+      display: none;
+    }
+
+    .query-result.active {
+      display: block;
+    }
+
+    .result-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--child-accent);
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .result-grid {
+      display: grid;
+      gap: 0.8rem;
+    }
+
+    .result-item {
+      background: #f7faf8;
+      border: 2px solid #d4edda;
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+    }
+
+    .result-item .label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .result-item .value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-top: 0.15rem;
+    }
+
+    .result-item .value.amount {
+      color: #c05621;
+      font-size: 1.6rem;
+    }
+
+    .result-item .value.status {
+      color: #276749;
+    }
+
+    .again-btn {
+      width: 100%;
+      padding: 0.85rem;
+      background: #fff;
+      color: var(--child-accent);
+      border: 2px solid var(--child-accent);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 1.2rem;
+      touch-action: manipulation;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .again-btn:hover {
+      background: var(--child-accent);
+      color: #fff;
+    }
+
+    /* 页脚说明 */
+    .page-footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.8rem;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面标题 -->
+  <header class="page-header">
+    <h1>一键养老求助模拟器</h1>
+    <p>老人发起求助 → 子女收到通知 → 自动查询养老金（演示版）</p>
+  </header>
+
+  <!-- 老人区 + 子女区 并排布局 -->
+  <main class="main-layout">
+
+    <!-- ===== 老人操作区 ===== -->
+    <section class="section-card elder-section">
+      <div class="section-label">👵 老人操作区</div>
+      <div class="elder-body">
+        <!-- 求助状态提示（点击按钮后显示） -->
+        <div class="elder-status" id="elderStatus">
+          已向子女发送请求，请稍等
+          <span class="request-id" id="requestIdDisplay"></span>
+        </div>
+
+        <!-- 大圆形求助按钮 -->
+        <button class="help-btn" id="helpBtn" type="button">
+          👵 我需要帮助 👴
+        </button>
+
+        <p class="elder-hint">点击按钮，向子女发送养老金查询请求</p>
+      </div>
+    </section>
+
+    <!-- ===== 子女操作区（模拟微信） ===== -->
+    <section class="section-card child-section">
+      <div class="section-label">👨‍👩‍👧 子女操作区（模拟微信）</div>
+      <div class="wechat-mock">
+        <div class="wechat-header">
+          <span class="back-icon">‹</span>
+          <span>微信</span>
+        </div>
+        <div class="wechat-messages" id="wechatMessages">
+          <div class="wechat-empty" id="wechatEmpty">
+            暂无新消息<br>等待父母发起求助...
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== 子女填写表单模态框 ===== -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>帮父母查询养老金</span>
+        <button class="modal-close" id="modalClose" type="button" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- 表单阶段 -->
+        <form id="queryForm">
+          <div class="form-group">
+            <label for="elderName">老人姓名</label>
+            <input type="text" id="elderName" placeholder="例如：张建国" autocomplete="name">
+            <div class="form-error" id="nameError">请输入老人姓名</div>
+          </div>
+          <div class="form-group">
+            <label for="elderId">身份证号</label>
+            <input type="text" id="elderId" placeholder="例如：123456199001011234" maxlength="18">
+            <div class="form-error" id="idError">请输入正确的 18 位身份证号</div>
+          </div>
+          <div class="form-group">
+            <label for="elderCity">所在城市 <span class="optional">（选填）</span></label>
+            <select id="elderCity">
+              <option value="">请选择城市</option>
+              <option value="北京">北京</option>
+              <option value="上海">上海</option>
+              <option value="广州">广州</option>
+              <option value="深圳">深圳</option>
+              <option value="成都">成都</option>
+              <option value="杭州">杭州</option>
+            </select>
+          </div>
+          <button class="submit-btn" type="submit">提交并自动查询</button>
+        </form>
+
+        <!-- 查询中阶段 -->
+        <div class="query-loading" id="queryLoading">
+          <div class="spinner"></div>
+          <p>正在自动查询中...</p>
+        </div>
+
+        <!-- 查询结果阶段 -->
+        <div class="query-result" id="queryResult">
+          <div class="result-title">✅ 查询成功</div>
+          <div class="result-grid">
+            <div class="result-item">
+              <div class="label">姓名</div>
+              <div class="value" id="resName">—</div>
+            </div>
+            <div class="result-item">
+              <div class="label">最近发放月份</div>
+              <div class="value" id="resMonth">—</div>
+            </div>
+            <div class="result-item">
+              <div class="label">发放金额</div>
+              <div class="value amount" id="resAmount">—</div>
+            </div>
+            <div class="result-item">
+              <div class="label">发放状态</div>
+              <div class="value status" id="resStatus">—</div>
+            </div>
+          </div>
+          <button class="again-btn" id="againBtn" type="button">再次帮助父母</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    本页面为演示模拟，所有数据均为虚构，不连接真实社保或微信平台。
+  </footer>
+
+  <script>
+    // ============================================================
+    // 模拟养老金数据库（身份证号 -> 发放记录）
+    // 演示数据：张**，2026年5月，￥3,862.50，已发放
+    // ============================================================
+    const MOCK_PENSION_DB = {
+      "123456199001011234": {
+        name: "张**",
+        month: "2026年5月",
+        amount: "￥3,862.50",
+        status: "已发放",
+      },
+      "11010119800307663X": {
+        name: "李**",
+        month: "2026年5月",
+        amount: "￥4,215.80",
+        status: "已发放",
+      },
+    };
+
+    // ============================================================
+    // DOM 元素引用
+    // ============================================================
+    const helpBtn          = document.getElementById("helpBtn");
+    const elderStatus      = document.getElementById("elderStatus");
+    const requestIdDisplay = document.getElementById("requestIdDisplay");
+    const wechatMessages   = document.getElementById("wechatMessages");
+    const wechatEmpty      = document.getElementById("wechatEmpty");
+    const modalOverlay     = document.getElementById("modalOverlay");
+    const modalClose       = document.getElementById("modalClose");
+    const queryForm        = document.getElementById("queryForm");
+    const queryLoading     = document.getElementById("queryLoading");
+    const queryResult      = document.getElementById("queryResult");
+    const againBtn         = document.getElementById("againBtn");
+
+    // 当前活跃的求助请求 ID
+    let currentRequestId = null;
+
+    // ============================================================
+    // 工具函数
+    // ============================================================
+
+    /** 校验 18 位身份证号格式（演示用） */
+    function isValidIdCard(id) {
+      return /^\d{17}[\dXx]$/.test(id.trim());
+    }
+
+    /** 格式化当前时间为 "HH:MM" */
+    function formatTime(date) {
+      const h = String(date.getHours()).padStart(2, "0");
+      const m = String(date.getMinutes()).padStart(2, "0");
+      return `${h}:${m}`;
+    }
+
+    /** 显示/隐藏表单错误提示 */
+    function showError(el, show) {
+      el.classList.toggle("show", show);
+    }
+
+    /** 重置模态框到表单初始状态 */
+    function resetModal() {
+      queryForm.style.display = "block";
+      queryLoading.classList.remove("active");
+      queryResult.classList.remove("active");
+      queryForm.reset();
+      showError(document.getElementById("nameError"), false);
+      showError(document.getElementById("idError"), false);
+    }
+
+    /** 打开模态框 */
+    function openModal() {
+      resetModal();
+      modalOverlay.classList.add("active");
+      document.body.style.overflow = "hidden";
+    }
+
+    /** 关闭模态框 */
+    function closeModal() {
+      modalOverlay.classList.remove("active");
+      document.body.style.overflow = "";
+    }
+
+    // ============================================================
+    // 老人端：点击求助按钮
+    // ============================================================
+    helpBtn.addEventListener("click", () => {
+      // 生成唯一请求 ID（时间戳模拟）
+      currentRequestId = "REQ-" + Date.now();
+
+      // 显示老人端状态提示
+      requestIdDisplay.textContent = "请求编号：" + currentRequestId;
+      elderStatus.classList.add("visible");
+
+      // 短暂禁用按钮，防止重复点击
+      helpBtn.disabled = true;
+      setTimeout(() => { helpBtn.disabled = false; }, 1500);
+
+      // 在子女端（模拟微信）插入新消息
+      pushWechatMessage(currentRequestId);
+    });
+
+    // ============================================================
+    // 子女端：向微信消息列表插入一条新通知
+    // ============================================================
+    function pushWechatMessage(requestId) {
+      // 移除空状态提示
+      if (wechatEmpty) {
+        wechatEmpty.remove();
+      }
+
+      const now = new Date();
+      const timeStr = formatTime(now);
+
+      // 构建消息卡片 HTML
+      const card = document.createElement("div");
+      card.className = "msg-card";
+      card.dataset.requestId = requestId;
+      card.innerHTML = `
+        <div class="msg-time">${timeStr}</div>
+        <div style="display:flex;align-items:flex-start;gap:0.7rem;">
+          <div class="msg-avatar">👴</div>
+          <div class="msg-bubble">
+            <div class="msg-sender">父母 <span class="msg-badge">新</span></div>
+            <div class="msg-text">帮我查一下养老金</div>
+          </div>
+        </div>
+      `;
+
+      // 点击消息卡片 → 打开查询表单
+      card.addEventListener("click", () => {
+        openModal();
+      });
+
+      wechatMessages.prepend(card);
+    }
+
+    // ============================================================
+    // 模态框：关闭
+    // ============================================================
+    modalClose.addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+
+    // ============================================================
+    // 表单提交：校验 → 模拟查询 → 展示结果
+    // ============================================================
+    queryForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const nameInput = document.getElementById("elderName");
+      const idInput   = document.getElementById("elderId");
+      const nameError = document.getElementById("nameError");
+      const idError   = document.getElementById("idError");
+
+      const name = nameInput.value.trim();
+      const id   = idInput.value.trim().toUpperCase();
+
+      // 表单校验
+      let valid = true;
+      if (!name) {
+        showError(nameError, true);
+        valid = false;
+      } else {
+        showError(nameError, false);
+      }
+
+      if (!isValidIdCard(id)) {
+        showError(idError, true);
+        valid = false;
+      } else {
+        showError(idError, false);
+      }
+
+      if (!valid) return;
+
+      // 切换到"查询中"状态
+      queryForm.style.display = "none";
+      queryLoading.classList.add("active");
+
+      // 模拟 2 秒查询延迟
+      setTimeout(() => {
+        queryLoading.classList.remove("active");
+
+        // 从模拟数据库查找记录
+        const record = MOCK_PENSION_DB[id];
+
+        if (record) {
+          // 查询成功：填充结果
+          document.getElementById("resName").textContent   = record.name;
+          document.getElementById("resMonth").textContent  = record.month;
+          document.getElementById("resAmount").textContent = record.amount;
+          document.getElementById("resStatus").textContent = record.status;
+        } else {
+          // 未找到记录：显示提示性结果
+          document.getElementById("resName").textContent   = name.charAt(0) + "**";
+          document.getElementById("resMonth").textContent  = "—";
+          document.getElementById("resAmount").textContent = "未查询到记录";
+          document.getElementById("resStatus").textContent = "请核对身份证号";
+          document.querySelector(".result-title").textContent = "⚠️ 未查询到记录";
+        }
+
+        queryResult.classList.add("active");
+      }, 2000);
+    });
+
+    // ============================================================
+    // "再次帮助父母"：重置模态框，回到表单
+    // ============================================================
+    againBtn.addEventListener("click", () => {
+      document.querySelector(".result-title").textContent = "✅ 查询成功";
+      resetModal();
+    });
+  </script>
+
+</body>
+</html>
