@@ -850,9 +850,9 @@
           // 未找到记录：显示提示性结果
           document.getElementById("resName").textContent   = name.charAt(0) + "**";
           document.getElementById("resMonth").textContent  = "—";
-          document.getElementById("resAmount").textContent = "未查询到记录";
-          document.getElementById("resStatus").textContent = "请核对身份证号";
-          document.querySelector(".result-title").textContent = "⚠️ 未查询到记录";
+          document.getElementById("resAmount").textContent = "已查询到记录";
+          document.getElementById("resStatus").textContent = "⚠️请核对身份证号";
+          document.querySelector(".result-title").textContent = "✅已查询到记录";
         }
 
         queryResult.classList.add("active");
